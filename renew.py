@@ -13,7 +13,6 @@ if not USERNAME or not PASSWORD:
     print("Error: PA_USERNAME and PA_PASSWORD environment variables are required.")
     sys.exit(1)
 
-
 def check_status_via_api():
     if not API_TOKEN:
         return None
@@ -28,13 +27,9 @@ def check_status_via_api():
         print(f"[API Warning] Failed to check status via API: {e}")
     return None
 
-
 def main():
     print(f"=== Starting PythonAnywhere Auto-Renew for {USERNAME} ===")
     prev_expiry = check_status_via_api()
-
-    extended = False
-    reloaded = False
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -58,6 +53,7 @@ def main():
             error = page.locator(".alert-danger, .errorlist, .help-block").all_text_contents()
             print(f"Error: Login failed! Page URL: {page.url}, Error: {error}")
             browser.close()
+            print(f"=== Auto-Renew Failed. Previous expiry: {prev_expiry} ===")
             sys.exit(1)
 
         print(f"3. Logged in successfully. Current URL: {page.url}")
@@ -78,6 +74,7 @@ def main():
             "input[value*='Extend']"
         ]
 
+        extended = False
         for sel in extend_selectors:
             btn = page.locator(sel)
             if btn.count() > 0 and btn.first.is_visible():
@@ -91,7 +88,7 @@ def main():
                 break
 
         if not extended:
-            print("Notice: Extend button not found or not currently active (it may already be extended recently).")
+            print("::warning::Extend button not found or not currently active (it may already be extended recently).")
 
         print("6. Reloading Webapp...")
         reload_selectors = [
@@ -101,6 +98,7 @@ def main():
             ".reload_button",
             "button[name='reload']"
         ]
+        reloaded = False
         for sel in reload_selectors:
             rbtn = page.locator(sel)
             if rbtn.count() > 0 and rbtn.first.is_visible():
@@ -130,6 +128,7 @@ def main():
 
     if not extended and not reloaded:
         print("Error: Neither renewal nor reload succeeded.")
+        print(f"=== Auto-Renew Failed. Previous expiry: {prev_expiry} ===")
         sys.exit(1)
 
     new_expiry = check_status_via_api()
