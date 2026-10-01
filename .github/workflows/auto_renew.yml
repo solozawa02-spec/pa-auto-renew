@@ -1,0 +1,33 @@
+name: PythonAnywhere Auto Renew
+
+on:
+  schedule:
+    # รันทุก 7 วัน (ทุกวันจันทร์ เวลา 03:00 UTC หรือ 10:00 น. เวลาไทย)
+    - cron: '0 3 * * 1'
+  workflow_dispatch: # เปิดให้กดปุ่ม Run workflow ด้วยตนเองใน GitHub เพื่อทดสอบได้ทันที
+
+jobs:
+  auto_renew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright requests
+          playwright install chromium --with-deps
+
+      - name: Run Auto Renew Script
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_PASSWORD: ${{ secrets.PA_PASSWORD }}
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+        run: |
+          python renew.py
