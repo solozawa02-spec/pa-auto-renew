@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+
 import requests
 from playwright.sync_api import sync_playwright
 
@@ -11,6 +12,7 @@ API_TOKEN = os.environ.get("PA_API_TOKEN")
 if not USERNAME or not PASSWORD:
     print("Error: PA_USERNAME and PA_PASSWORD environment variables are required.")
     sys.exit(1)
+
 
 def check_status_via_api():
     if not API_TOKEN:
@@ -26,9 +28,13 @@ def check_status_via_api():
         print(f"[API Warning] Failed to check status via API: {e}")
     return None
 
+
 def main():
     print(f"=== Starting PythonAnywhere Auto-Renew for {USERNAME} ===")
     prev_expiry = check_status_via_api()
+
+    extended = False
+    reloaded = False
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -72,7 +78,6 @@ def main():
             "input[value*='Extend']"
         ]
 
-        extended = False
         for sel in extend_selectors:
             btn = page.locator(sel)
             if btn.count() > 0 and btn.first.is_visible():
@@ -96,7 +101,6 @@ def main():
             ".reload_button",
             "button[name='reload']"
         ]
-        reloaded = False
         for sel in reload_selectors:
             rbtn = page.locator(sel)
             if rbtn.count() > 0 and rbtn.first.is_visible():
@@ -118,13 +122,20 @@ def main():
                 )
                 if r.status_code == 200:
                     print("Reloaded successfully via API.")
+                    reloaded = True
             except Exception as e:
                 print(f"API reload error: {e}")
 
         browser.close()
 
+    if not extended and not reloaded:
+        print("Error: Neither renewal nor reload succeeded.")
+        sys.exit(1)
+
     new_expiry = check_status_via_api()
     print(f"=== Auto-Renew Finished. Previous expiry: {prev_expiry} -> Current expiry: {new_expiry} ===")
+    sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
